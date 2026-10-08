@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>公考每日学习记录表 &amp; 每周复盘表</title>
+<style>
+  :root{--line:#d0d7de;--bg:#f6f8fa;--pri:#2563eb;--txt:#1f2328;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+       color:var(--txt);background:#eef1f5;font-size:14px;line-height:1.6;}
+  .wrap{max-width:1040px;margin:0 auto;padding:16px 20px 60px;}
+  h1{font-size:22px;text-align:center;margin:10px 0 4px;}
+  .sub{text-align:center;color:#6b7280;font-size:13px;margin-bottom:16px;}
+  .btns{position:sticky;top:0;z-index:10;background:#eef1f5;padding:10px 0;
+        display:flex;gap:8px;flex-wrap:wrap;justify-content:center;
+        border-bottom:1px solid #dbe1e8;margin-bottom:14px;}
+  button{cursor:pointer;font-family:inherit;font-size:13px;padding:8px 14px;border-radius:8px;
+         border:1px solid var(--line);background:#fff;font-weight:600;color:var(--txt);}
+  button:hover{background:#f3f4f6;}
+  button.primary{background:var(--pri);color:#fff;border-color:var(--pri);}
+  button.primary:hover{background:#1d4ed8;}
+  button.danger{color:#b91c1c;border-color:#fca5a5;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px;
+        margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+  .card h2{font-size:17px;margin:0 0 12px;padding-bottom:8px;border-bottom:2px solid var(--pri);
+           display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;}
+  .f{display:flex;flex-direction:column;gap:3px;}
+  .f label{font-size:12px;color:#57606a;font-weight:600;}
+  input,textarea{font-family:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);
+                 border-radius:6px;background:#fff;width:100%;color:var(--txt);}
+  input:focus,textarea:focus{outline:none;border-color:var(--pri);box-shadow:0 0 0 2px rgba(37,99,235,.12);}
+  .section-title{font-weight:700;font-size:13.5px;margin:16px 0 6px;color:#1f2937;}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;}
+  th,td{border:1px solid var(--line);padding:5px;text-align:center;}
+  th{background:var(--bg);font-weight:600;font-size:12px;}
+  td input{border:none;background:transparent;padding:4px;text-align:center;border-radius:0;}
+  td input:focus{box-shadow:none;background:#eff6ff;}
+  textarea{resize:vertical;min-height:60px;}
+  .del{font-size:12px;padding:3px 10px;font-weight:500;}
+  .tip{font-size:12px;color:#6b7280;text-align:center;margin:6px 0 18px;}
+  @media print{
+    body{background:#fff;font-size:12px;}
+    .btns,.del,.tip{display:none!important;}
+    .card{box-shadow:none;border:none;page-break-inside:avoid;padding:0;margin-bottom:14px;}
+    .wrap{max-width:none;padding:0;}
+    input,textarea{border:none;border-bottom:1px solid #999;border-radius:0;padding:2px;}
+    table{margin-top:4px;}
+    @page{margin:12mm;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>公考每日学习记录表 &amp; 每周复盘表</h1>
+  <div class="sub">每晚填每日表 · 周日填每周表 · 填好后整页发我复盘（内容自动保存在本机浏览器）</div>
+
+  <div class="btns">
+    <button class="primary" id="addBtn" type="button">＋ 添加今日记录</button>
+    <button id="printBtn" type="button">🖨 打印 / 另存为 PDF</button>
+    <button class="danger" id="clearBtn" type="button">清空全部</button>
+  </div>
+
+  <div id="dailyList"></div>
+  <div class="card" id="weeklyBox"></div>
+
+  <div class="tip">提示：数据存在本机浏览器，换设备或清理缓存会丢失，重要周次建议打印或复制保存。</div>
+</div>
+
+<script>
+(function(){
+  var dailyList = document.getElementById('dailyList');
+  var weeklyBox = document.getElementById('weeklyBox');
+  var KEY_D = 'gk_daily_v1', KEY_W = 'gk_weekly_v1';
+
+  var MODULES = ['资料分析','判断推理','言语理解','数量/数推','科学推理','常识/政治'];
+
+  /* ---------- 每日表模板 ---------- */
+  var DAILY_TPL = ''
+  + '<h2><span>每日学习记录表 <span class="idx"></span></span>'
+  + '<button class="del" type="button">删除本日</button></h2>'
+  + '<div class="grid">'
+  +   '<div class="f"><label>日期 / 第几天</label><input data-f="date" placeholder="如 10-08 / D3"></div>'
+  +   '<div class="f"><label>阶段</label><input data-f="stage" placeholder="基础速通 / 模块强化 / 套题补弱 / 冲刺模考"></div>'
+  +   '<div class="f"><label>今日课程</label><input data-f="course" placeholder="粉笔AI第__节；7+1；郭熙言语；单淑玲申论；小黑政治"></div>'
+  + '</div>'
+  + '<div class="section-title">一、模块刷题</div>'
+  + '<table><thead><tr><th style="width:20%">模块</th><th>题量</th><th>正确</th>'
+  + '<th>正确率</th><th>用时</th><th style="width:32%">错因</th></tr></thead><tbody>'
+  + MODULES.map(function(m){
+      return '<tr><td>' + m + '</td>'
+        + '<td><input data-f="t_' + m + '"></td>'
+        + '<td><input data-f="c_' + m + '"></td>'
+        + '<td><input data-f="r_' + m + '"></td>'
+        + '<td><input data-f="u_' + m + '"></td>'
+        + '<td><input data-f="e_' + m + '" style="text-align:left"></td></tr>';
+    }).join('')
+  + '</tbody></table>'
+  + '<div class="section-title">二、其他</div>'
+  + '<div class="grid">'
+  +   '<div class="f"><label>申论</label><input data-f="shenlun" placeholder="小题__道；大作文__篇；主题；主要问题"></div>'
+  +   '<div class="f"><label>记忆卡</label><input data-f="memo" placeholder="成语__个；常识__个；政治理论__条"></div>'
+  +   '<div class="f"><label>总题量</label><input data-f="total" placeholder="新题__ + 错题二刷__ = 合计__"></div>'
+  +   '<div class="f"><label>套题 / 模考</label><input data-f="mock" placeholder="卷名；总分；用时；各模块正确率"></div>'
+  +   '<div class="f"><label>错题复盘</label><input data-f="wrong" placeholder="错__道；真不会__；假不会__；蒙对__；超时__；已二刷__"></div>'
+  +   '<div class="f"><label>状态 / 睡眠</label><input data-f="state" placeholder="如 6.5h，状态一般"></div>'
+  + '</div>'
+  + '<div class="grid" style="margin-top:10px">'
+  +   '<div class="f"><label>今日最大问题</label><textarea data-f="problem"></textarea></div>'
+  +   '<div class="f"><label>明日重点</label><textarea data-f="tomorrow"></textarea></div>'
+  + '</div>';
+
+  /* ---------- 每周表模板 ---------- */
+  var WEEKLY_TPL = ''
+  + '<h2><span>每周复盘表</span></h2>'
+  + '<div class="grid">'
+  +   '<div class="f"><label>周次 / 日期</label><input data-f="w_week" placeholder="第__周；D__—D__；日期"></div>'
+  +   '<div class="f"><label>本周目标</label><input data-f="w_goal"></div>'
+  +   '<div class="f"><label>总刷题</label><input data-f="w_total" placeholder="新题__；错题二刷__；套题__套"></div>'
+  + '</div>'
+  + '<div class="section-title">一、模块数据</div>'
+  + '<table><thead><tr><th style="width:20%">模块</th><th>题量</th><th>正确率</th>'
+  + '<th>平均用时</th><th style="width:36%">主要错因</th></tr></thead><tbody>'
+  + MODULES.map(function(m){
+      return '<tr><td>' + m + '</td>'
+        + '<td><input data-f="w_t_' + m + '"></td>'
+        + '<td><input data-f="w_r_' + m + '"></td>'
+        + '<td><input data-f="w_u_' + m + '"></td>'
+        + '<td><input data-f="w_e_' + m + '" style="text-align:left"></td></tr>';
+    }).join('')
+  + '</tbody></table>'
+  + '<div class="section-title">二、套题成绩</div>'
+  + '<table><thead><tr><th style="width:12%">序号</th><th>卷名</th><th>总分</th>'
+  + '<th>用时</th><th style="width:38%">模块正确率 / 主要问题</th></tr></thead><tbody>'
+  + [1,2,3].map(function(i){
+      return '<tr><td>' + i + '</td>'
+        + '<td><input data-f="w_p' + i + '_name"></td>'
+        + '<td><input data-f="w_p' + i + '_score"></td>'
+        + '<td><input data-f="w_p' + i + '_time"></td>'
+        + '<td><input data-f="w_p' + i + '_note" style="text-align:left"></td></tr>';
+    }).join('')
+  + '</tbody></table>'
+  + '<div class="section-title">三、申论 / 记忆 / 错题</div>'
+  + '<div class="grid">'
+  +   '<div class="f"><label>申论</label><input data-f="w_shenlun" placeholder="小题__道；大作文__篇；采分点漏在哪"></div>'
+  +   '<div class="f"><label>记忆卡</label><input data-f="w_memo" placeholder="成语累计__；常识累计__；政治理论__"></div>'
+  +   '<div class="f"><label>错题二刷</label><input data-f="w_wrong" placeholder="二刷__道；独立做对__道；正确率__%"></div>'
+  + '</div>'
+  + '<div class="section-title">四、总结与调整</div>'
+  + '<div class="grid">'
+  +   '<div class="f"><label>本周 Top3 问题</label><textarea data-f="w_top3" placeholder="1.&#10;2.&#10;3."></textarea></div>'
+  +   '<div class="f"><label>原因归类</label><textarea data-f="w_cause" placeholder="知识__；审题__；计算__；时间__；心态__"></textarea></div>'
+  +   '<div class="f"><label>下周调整</label><textarea data-f="w_adjust" placeholder="课程：&#10;刷题：&#10;申论：&#10;常识："></textarea></div>'
+  +   '<div class="f"><label>阶段检查点</label><textarea data-f="w_check" placeholder="D15 65+ / D30 70+ / D45 75+ / D60 冲80；当前__；差距__"></textarea></div>'
+  +   '<div class="f"><label>需要 AI 帮什么</label><textarea data-f="w_ai" placeholder="如：资料提速、逻辑削弱、申论采分点、数量取舍"></textarea></div>'
+  + '</div>';
+
+  /* ---------- 添加一天 ---------- */
+  function addDaily(){
+    var card = document.createElement('div');
+    card.className = 'card daily';
+    card.innerHTML = DAILY_TPL;
+    dailyList.appendChild(card);
+    updateIdx();
+    return card;
+  }
+
+  function updateIdx(){
+    var cards = dailyList.querySelectorAll('.daily');
+    for (var i = 0; i < cards.length; i++){
+      var s = cards[i].querySelector('.idx');
+      if (s) s.textContent = '（第 ' + (i + 1) + ' 天）';
+    }
+  }
+
+  /* ---------- 保存 / 读取 ---------- */
+  function save(){
+    var all = document.querySelectorAll('input,textarea');
+    for (var i = 0; i < all.length; i++){
+      var el = all[i];
+      if (el.tagName === 'TEXTAREA') el.textContent = el.value;
+      else el.setAttribute('value', el.value);
+    }
+    try{
+      localStorage.setItem(KEY_D, dailyList.innerHTML);
+      localStorage.setItem(KEY_W, weeklyBox.innerHTML);
+    }catch(e){}
+  }
+
+  var timer = null;
+  document.addEventListener('input', function(e){
+    if (e.target.matches('input,textarea')){
+      clearTimeout(timer);
+      timer = setTimeout(save, 400);
+    }
+  });
+
+  /* ---------- 事件委托：删除某天 ---------- */
+  dailyList.addEventListener('click', function(e){
+    var btn = e.target.closest ? e.target.closest('.del') : null;
+    if (btn){
+      var card = btn.closest('.daily');
+      if (card) card.remove();
+      updateIdx();
+      save();
+    }
+  });
+
+  /* ---------- 按钮 ---------- */
+  document.getElementById('addBtn').addEventListener('click', function(){
+    var c = addDaily();
+    save();
+    c.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+
+  document.getElementById('printBtn').addEventListener('click', function(){
+    save();
+    window.print();
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', function(){
+    if (confirm('确定清空所有已填内容吗？此操作不可恢复。')){
+      localStorage.removeItem(KEY_D);
+      localStorage.removeItem(KEY_W);
+      dailyList.innerHTML = '';
+      weeklyBox.innerHTML = WEEKLY_TPL;
+      addDaily();
+    }
+  });
+
+  /* ---------- 初始化 ---------- */
+  var savedD = null, savedW = null;
+  try{
+    savedD = localStorage.getItem(KEY_D);
+    savedW = localStorage.getItem(KEY_W);
+  }catch(e){}
+
+  weeklyBox.innerHTML = savedW || WEEKLY_TPL;
+  if (savedD) dailyList.innerHTML = savedD;
+  if (!dailyList.children.length) addDaily();
+  updateIdx();
+})();
+</script>
+</body>
+</html>
